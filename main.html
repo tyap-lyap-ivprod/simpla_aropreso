@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Массовая печать этикеток</title>
+</head>
+<body>
+<br>
+<label> Начальный номер</label>
+<input id="n_start" type="number" value="1">
+<br>
+<label> Конечный номер</label>
+<input id="n_end"type="number" value="10">
+<br>
+<label> Отделение</label>
+<select id="otd">
+    <option>1</option>
+    <option>2</option>
+    <option>3</option>
+    <option>4</option>
+    <option>5</option>
+    <option>6</option>
+    <option>7</option>
+    <option>8</option>
+    <option>9</option>
+    <option>10</option>
+    <option>11</option>
+</select>
+
+<br>
+<label> Выбор принтера</label>
+<select id="el-printer-list"></select>
+<br>
+<label> Шаблон </label>
+<br>
+<textarea id="el-commands" cols="40" rows="20">
+^XA
+^BY1,2,2
+^FT340,115
+^BCN,70,N,N
+^FD@NUMBER@
+^FS
+^FT340,135
+^AQN,30,15
+^FD@NUMBER@
+^FS 
+^XZ
+</textarea>
+<br/>
+<br>
+<input id="el-print-button" type="button" value="Печать"/>
+<script>
+
+function printLabel(printerName, commands) {
+    BarsBrowserPlugin.send("PrintLabel", { printerName, commands }, (result, error) => {
+        if(error) {
+            alert(error);
+        } else {
+            console.info("result", result);
+        }
+    })
+}
+
+function getPrinterList(callback) {
+    BarsBrowserPlugin.send("GetPrinterList", {}, (result, error) => {
+        if(error) {
+        alert(error);
+        } else {
+        console.info("result", result);
+        callback && callback(result.list);
+        }
+    })
+}
+
+function print_range(start, end, printer, otdelenie, command1){
+    var command = ""
+    var today_date = new Date();
+
+    for (let i = parseInt(start); parseInt(i) <=  end; i++) {
+        let numbert = i.toString().padStart(4,"0");
+        let code = otdelenie.toString().padStart(2,"0") + today_date.getFullYear().toString().slice(2).padStart(2,"0") + (today_date.getMonth()+1).toString().padStart(2,"0")+  today_date.getDate().toString().padStart(2,"0") + numbert;
+        let command2 = command1.replace("@NUMBER@", code);
+        command2 = command2.replace("@NUMBER@", code);
+        let gtsd =  "^XA\n^BY1.3,2,2\n^FT340,110\n^BCN,100,Y,N\n^FD" + code + "\n^FS\n^XZ";
+        command += command2.repeat(2);
+        console.log(i);
+    }
+    console.log(start, end);
+    printLabel(printer, command);
+}
+
+const load = () => {
+    if(!window["BarsBrowserPlugin"]) {
+        console.error("Could not initialize \"BARS Browser Plugin Adapter\" extension");
+        return;
+    }
+    let printers = document.getElementById("el-printer-list");
+    getPrinterList((list) => {
+        list.forEach((printer) => {
+        let option = document.createElement("option");
+        option.text = printer;
+        printers.add(option);
+        });
+    });
+
+    var command = document.getElementById("el-commands").innerHTML;
+    console.log(command.replace("@NUMBER@", "0001"));
+
+    document.getElementById("el-print-button")
+      .addEventListener("click", () => {
+        let printerName = document.getElementById("el-printer-list").value;
+        let command = document.getElementById("el-commands").value;
+        let otdelenie = document.getElementById("otd").value;
+        let n_start = document.getElementById("n_start").value;
+        let n_end = document.getElementById("n_end").value;
+        print_range(n_start, n_end, printerName, otdelenie, command);
+    });
+}
+window.onload = load;
+</script>
+
+</body></html>
